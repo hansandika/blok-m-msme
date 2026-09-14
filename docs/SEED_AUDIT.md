@@ -79,4 +79,6 @@ cd api && DATABASE_URL=postgres://blokm:blokm@localhost:5432/blokm?sslmode=disab
 
 `make demo` brings Postgres up, waits until healthy, then runs this seed.
 
+To point the API at the hosted Supabase project instead, set `DATABASE_URL` to the **session pooler** URI and `AUTO_SEED=0` (that database is already seeded). See the README. Never commit the password.
+
 Do **not** public-write `places`. New listings enter through `POST /suggestions` → admin approve → admin apply.
