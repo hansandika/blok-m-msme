@@ -63,3 +63,4 @@ demo: wait-db
 	@echo "  curl -s -H 'X-Admin-Token: $(ADMIN_TOKEN)' http://localhost:8080/admin/suggestions"
 	@echo
 	@echo "Seed notes: docs/SEED_AUDIT.md"
+	@echo "Optional hosted DB: set DATABASE_URL to the Supabase session pooler (see README). make demo stays local."

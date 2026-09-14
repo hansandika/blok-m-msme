@@ -48,6 +48,39 @@ Open [http://localhost:3000](http://localhost:3000). Admin queue: [http://localh
 
 Or the long form: `make db`, `make api`, `make seed`, `make web`.
 
+`make demo` stays **docker-first** (or an already-running Postgres on `localhost:5432`). Hosted Supabase is optional — see below.
+
+## Optional: Supabase (hosted Postgres)
+
+Local docker-compose remains the zero-config default. The product also has a hosted Supabase project if you want a shared DB:
+
+| | |
+|---|---|
+| Project | `blok-m-msme` |
+| Ref | `sfeebnwtaxnztglvutvd` |
+| Region | `ap-southeast-1` |
+| URL | https://sfeebnwtaxnztglvutvd.supabase.co |
+
+Copy the database password from the Supabase dashboard (Settings → Database). **Do not commit it.**
+
+**Use the session pooler** (port `5432`) with Go/pgx. Session mode keeps prepared statements working. Transaction-mode pooler (port `6543`) can break `pgx` prepared statements — skip it for this API.
+
+```bash
+# Session pooler (preferred). Direct db.*.supabase.co is IPv6-only and fails on many networks.
+export DATABASE_URL='postgresql://postgres.sfeebnwtaxnztglvutvd:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require'
+export AUTO_SEED=0   # schema + 56 seed places are already loaded on this project
+export ADMIN_TOKEN=blokm-demo
+cd api && go run ./cmd/server
+```
+
+- Same SQL as local: migrations are `CREATE … IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`. PostGIS is **not** required (queries use `lat`/`lng`).
+- The Next.js app talks only to the Go API (`NEXT_PUBLIC_API_URL`). Do not put `DATABASE_URL` in the browser.
+- Pointing `make api` at Supabase: `DATABASE_URL='…' AUTO_SEED=0 make api`
+- Fresh empty Supabase DB: run the API once with `AUTO_SEED=1` (or `make seed`) after setting `DATABASE_URL`. This project is already migrated + seeded, so keep `AUTO_SEED=0` to avoid a redundant upsert.
+- RLS is enabled on the hosted tables. The Go API should use the `postgres` role (or another role that bypasses RLS). Client-side Supabase keys are not used.
+
+`make demo` does **not** target Supabase; it only prepares a local database.
+
 ## How to run (manual)
 
 ### 1. Postgres
@@ -95,9 +128,9 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable | Where | Default | Notes |
 |---|---|---|---|
-| `DATABASE_URL` | API | `postgres://blokm:blokm@localhost:5432/blokm?sslmode=disable` | |
+| `DATABASE_URL` | API | `postgres://blokm:blokm@localhost:5432/blokm?sslmode=disable` | Local docker default. For hosted Supabase use the **session pooler** URI (`sslmode=require`). Never commit a password. |
 | `API_ADDR` | API | `:8080` | |
-| `AUTO_SEED` | API | `1` | Set `0` to skip seeding an empty DB |
+| `AUTO_SEED` | API | `1` | Set `0` to skip seeding (use `0` on the already-seeded Supabase project) |
 | `ADMIN_TOKEN` | API | unset in the binary; `blokm-demo` via `make api` / `make demo` | Required for `/admin/*`. Header: `X-Admin-Token` |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:8080` | |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | web | unset | If set, Mapbox GL JS dark map. Otherwise Leaflet + OSM (no key) |
