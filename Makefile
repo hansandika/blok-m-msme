@@ -2,6 +2,7 @@
 
 DATABASE_URL ?= postgres://blokm:blokm@localhost:5432/blokm?sslmode=disable
 ADMIN_TOKEN ?= blokm-demo
+AUTO_SEED ?= 1
 
 db:
 	docker compose up -d db
@@ -25,9 +26,10 @@ wait-db:
 	fi
 
 api:
-	cd api && DATABASE_URL=$(DATABASE_URL) AUTO_SEED=1 ADMIN_TOKEN=$(ADMIN_TOKEN) go run ./cmd/server
+	cd api && DATABASE_URL=$(DATABASE_URL) AUTO_SEED=$(AUTO_SEED) ADMIN_TOKEN=$(ADMIN_TOKEN) go run ./cmd/server
 
-seed: wait-db
+seed:
+	@if echo "$(DATABASE_URL)" | grep -Eq 'localhost|127\.0\.0\.1'; then $(MAKE) wait-db; fi
 	cd api && DATABASE_URL=$(DATABASE_URL) go run ./cmd/seed
 
 web:

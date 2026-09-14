@@ -76,7 +76,7 @@ cd api && go run ./cmd/server
 - Same SQL as local: migrations are `CREATE … IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`. PostGIS is **not** required (queries use `lat`/`lng`).
 - The Next.js app talks only to the Go API (`NEXT_PUBLIC_API_URL`). Do not put `DATABASE_URL` in the browser.
 - Pointing `make api` at Supabase: `DATABASE_URL='…' AUTO_SEED=0 make api`
-- Fresh empty Supabase DB: run the API once with `AUTO_SEED=1` (or `make seed`) after setting `DATABASE_URL`. This project is already migrated + seeded, so keep `AUTO_SEED=0` to avoid a redundant upsert.
+- Fresh empty Supabase DB: `DATABASE_URL='…' make seed` (skips local docker wait) or `cd api && go run ./cmd/seed`. This project is already migrated + seeded, so keep `AUTO_SEED=0`.
 - RLS is enabled on the hosted tables. The Go API should use the `postgres` role (or another role that bypasses RLS). Client-side Supabase keys are not used.
 
 `make demo` does **not** target Supabase; it only prepares a local database.
