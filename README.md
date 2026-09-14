@@ -52,7 +52,7 @@ Or the long form: `make db`, `make api`, `make seed`, `make web`.
 
 ## Optional: Supabase (hosted Postgres)
 
-Local docker-compose remains the zero-config default. The product also has a hosted Supabase project if you want a shared DB:
+Local docker-compose remains the zero-config default. Hosted project **blok-m-msme** is already live:
 
 | | |
 |---|---|
@@ -61,7 +61,7 @@ Local docker-compose remains the zero-config default. The product also has a hos
 | Region | `ap-southeast-1` |
 | URL | https://sfeebnwtaxnztglvutvd.supabase.co |
 
-Copy the database password from the Supabase dashboard (Settings → Database). **Do not commit it.**
+Schema (`places` + `suggestions`, including `applied_at` / `applied_place_id`) is applied, **RLS is enabled**, and **56 seed places** are loaded. Copy the database password from the Supabase dashboard (Settings → Database). **Do not commit it.**
 
 **Use the session pooler** (port `5432`) with Go/pgx. Session mode keeps prepared statements working. Transaction-mode pooler (port `6543`) can break `pgx` prepared statements — skip it for this API.
 
