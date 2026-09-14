@@ -122,7 +122,7 @@ func (s *Store) CreateSuggestion(ctx context.Context, in models.SuggestionInput)
 	const q = `
 INSERT INTO suggestions (id, kind, place_id, name, category, notes, lat, lng)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, kind, place_id, name, category, notes, lat, lng, status, created_at`
+RETURNING ` + suggestionCols
 
 	var placeID any
 	if strings.TrimSpace(in.PlaceID) != "" {
@@ -137,26 +137,18 @@ RETURNING id, kind, place_id, name, category, notes, lat, lng, status, created_a
 		category = in.Category
 	}
 
-	row := s.pool.QueryRow(ctx, q, uuid.NewString(), in.Kind, placeID, name, category, in.Notes, in.Lat, in.Lng)
-	var out models.Suggestion
-	var pid *string
-	err := row.Scan(
-		&out.ID, &out.Kind, &pid, &out.Name, &out.Category, &out.Notes,
-		&out.Lat, &out.Lng, &out.Status, &out.CreatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	out.PlaceID = pid
-	return &out, nil
+	return scanSuggestion(s.pool.QueryRow(ctx, q, uuid.NewString(), in.Kind, placeID, name, category, in.Notes, in.Lat, in.Lng))
 }
 
 func (s *Store) ListSuggestions(ctx context.Context, status string) ([]models.Suggestion, error) {
-	q := `
-SELECT id, kind, place_id, name, category, notes, lat, lng, status, created_at
-FROM suggestions`
+	q := `SELECT ` + suggestionCols + ` FROM suggestions`
 	args := []any{}
-	if status != "" {
+	status = strings.TrimSpace(strings.ToLower(status))
+	switch status {
+	case "":
+	case "applied":
+		q += ` WHERE applied_at IS NOT NULL`
+	default:
 		q += ` WHERE status = $1`
 		args = append(args, status)
 	}
@@ -169,16 +161,13 @@ FROM suggestions`
 
 	out := []models.Suggestion{}
 	for rows.Next() {
-		var item models.Suggestion
-		var pid *string
-		if err := rows.Scan(
-			&item.ID, &item.Kind, &pid, &item.Name, &item.Category, &item.Notes,
-			&item.Lat, &item.Lng, &item.Status, &item.CreatedAt,
-		); err != nil {
+		item, err := scanSuggestion(rows)
+		if err != nil {
 			return nil, err
 		}
-		item.PlaceID = pid
-		out = append(out, item)
+		if item != nil {
+			out = append(out, *item)
+		}
 	}
 	return out, rows.Err()
 }

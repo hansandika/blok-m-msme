@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,12 +17,22 @@ import (
 	"github.com/hansandika/blok-m-msme/api/internal/store"
 )
 
+// Backend is the persistence surface the HTTP API needs.
+type Backend interface {
+	ListPlaces(ctx context.Context, f models.PlaceFilters) ([]models.Place, error)
+	GetPlace(ctx context.Context, idOrSlug string) (*models.Place, error)
+	CreateSuggestion(ctx context.Context, in models.SuggestionInput) (*models.Suggestion, error)
+	ListSuggestions(ctx context.Context, status string) ([]models.Suggestion, error)
+	SetSuggestionStatus(ctx context.Context, id, status string) (*models.Suggestion, error)
+	ApplySuggestion(ctx context.Context, id string) (*store.ApplyResult, error)
+}
+
 type Server struct {
-	store      *store.Store
+	store      Backend
 	adminToken string
 }
 
-func New(st *store.Store, adminToken string) http.Handler {
+func New(st Backend, adminToken string) http.Handler {
 	s := &Server{store: st, adminToken: adminToken}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -30,7 +42,7 @@ func New(st *store.Store, adminToken string) http.Handler {
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "X-Admin-Token"},
 		AllowCredentials: false,
 		MaxAge:           300,
@@ -40,8 +52,26 @@ func New(st *store.Store, adminToken string) http.Handler {
 	r.Get("/places", s.listPlaces)
 	r.Get("/places/{id}", s.getPlace)
 	r.Post("/suggestions", s.createSuggestion)
-	r.Get("/admin/suggestions", s.listSuggestions)
+
+	r.Route("/admin", func(r chi.Router) {
+		r.Use(s.requireAdmin)
+		r.Get("/suggestions", s.listSuggestions)
+		r.Post("/suggestions/{id}/approve", s.approveSuggestion)
+		r.Post("/suggestions/{id}/reject", s.rejectSuggestion)
+		r.Post("/suggestions/{id}/apply", s.applySuggestion)
+		r.Patch("/suggestions/{id}", s.patchSuggestion)
+	})
 	return r
+}
+
+func (s *Server) requireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.adminToken == "" || r.Header.Get("X-Admin-Token") != s.adminToken {
+			writeError(w, http.StatusUnauthorized, "admin token required")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -87,8 +117,8 @@ func (s *Server) listPlaces(w http.ResponseWriter, r *http.Request) {
 		}
 		filters.NearLat = &lat
 		filters.NearLng = &lng
-		if r := strings.TrimSpace(q.Get("radius")); r != "" {
-			rm, err := strconv.ParseFloat(r, 64)
+		if rad := strings.TrimSpace(q.Get("radius")); rad != "" {
+			rm, err := strconv.ParseFloat(rad, 64)
 			if err != nil {
 				writeError(w, http.StatusBadRequest, "radius must be meters")
 				return
@@ -172,16 +202,69 @@ func (s *Server) createSuggestion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listSuggestions(w http.ResponseWriter, r *http.Request) {
-	if s.adminToken == "" || r.Header.Get("X-Admin-Token") != s.adminToken {
-		writeError(w, http.StatusUnauthorized, "admin token required")
-		return
-	}
 	items, err := s.store.ListSuggestions(r.Context(), r.URL.Query().Get("status"))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not list suggestions")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"suggestions": items, "count": len(items)})
+}
+
+func (s *Server) approveSuggestion(w http.ResponseWriter, r *http.Request) {
+	s.setStatus(w, r, "approved")
+}
+
+func (s *Server) rejectSuggestion(w http.ResponseWriter, r *http.Request) {
+	s.setStatus(w, r, "rejected")
+}
+
+func (s *Server) patchSuggestion(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	status := strings.ToLower(strings.TrimSpace(body.Status))
+	if status != "approved" && status != "rejected" {
+		writeError(w, http.StatusBadRequest, "status must be approved or rejected")
+		return
+	}
+	s.setStatusValue(w, r, status)
+}
+
+func (s *Server) setStatus(w http.ResponseWriter, r *http.Request, status string) {
+	s.setStatusValue(w, r, status)
+}
+
+func (s *Server) setStatusValue(w http.ResponseWriter, r *http.Request, status string) {
+	id := chi.URLParam(r, "id")
+	out, err := s.store.SetSuggestionStatus(r.Context(), id, status)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"suggestion": out})
+}
+
+func (s *Server) applySuggestion(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	res, err := s.store.ApplySuggestion(r.Context(), id)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	msg := "Applied onto live listings."
+	if res.AlreadyApplied {
+		msg = "Already applied; live listing unchanged."
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"suggestion":     res.Suggestion,
+		"place":          res.Place,
+		"alreadyApplied": res.AlreadyApplied,
+		"message":        msg,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -192,4 +275,17 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+func writeStoreError(w http.ResponseWriter, err error) {
+	var se *store.Error
+	if errors.As(err, &se) {
+		code := se.Code
+		if code < 400 || code > 599 {
+			code = http.StatusInternalServerError
+		}
+		writeError(w, code, se.Message)
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "internal error")
 }

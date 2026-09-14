@@ -152,8 +152,8 @@ export function ContributeForm() {
         <p className={status === "ok" ? "text-sm text-leaf" : "text-sm text-chili"}>{message}</p>
       )}
       <p className="text-xs leading-relaxed text-mist">
-        Submissions land in a pending queue. They do not write to live listings. Community edits stay
-        reviewed — Google Places sync is a later hook, not this MVP.
+        Submissions land in a pending queue. They do not write to live listings until a moderator
+        approves and applies them (demo: /admin with ADMIN_TOKEN). Google Places sync is a later hook.
       </p>
     </form>
   );

@@ -57,3 +57,57 @@ export async function submitSuggestion(body: {
   }
   return data as { message: string };
 }
+
+const ADMIN_TOKEN_KEY = "blokm-admin-token";
+
+export function readAdminToken(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ADMIN_TOKEN_KEY) ?? "";
+}
+
+export function writeAdminToken(token: string) {
+  window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
+}
+
+export function clearAdminToken() {
+  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+}
+
+async function adminRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Admin-Token": token,
+      ...(init?.headers ?? {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Request failed (${res.status})`);
+  }
+  return data as T;
+}
+
+export async function fetchAdminSuggestions(token: string, status = "") {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  return adminRequest<{ suggestions: import("./types").Suggestion[]; count: number }>(
+    `/admin/suggestions${qs}`,
+    token,
+  );
+}
+
+export async function moderateSuggestion(
+  token: string,
+  id: string,
+  action: "approve" | "reject" | "apply",
+) {
+  return adminRequest<{
+    suggestion: import("./types").Suggestion;
+    place?: import("./types").Place;
+    alreadyApplied?: boolean;
+    message?: string;
+  }>(`/admin/suggestions/${encodeURIComponent(id)}/${action}`, token, { method: "POST" });
+}
