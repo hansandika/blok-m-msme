@@ -50,6 +50,13 @@ lng: 106.7995`)
 	}
 }
 
+func TestParseNotesNarrativeLeftover(t *testing.T) {
+	p := ParseNotes("hours: 18:00–01:00\nopen-late: true\nKaki lima test stall for M1 smoke.")
+	if p.Narrative != "Kaki lima test stall for M1 smoke." {
+		t.Fatalf("narrative %q", p.Narrative)
+	}
+}
+
 func TestParseNotesBareTokens(t *testing.T) {
 	p := ParseNotes("Still open late / larut on Melawai. Price $$")
 	if p.OpenLate == nil || !*p.OpenLate {

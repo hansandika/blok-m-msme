@@ -189,7 +189,7 @@ func insertPlaceFromSuggestion(ctx context.Context, tx pgx.Tx, sug *models.Sugge
 
 	neighborhood := firstNonEmpty(deref(patch.Neighborhood), "Blok M")
 	address := firstNonEmpty(deref(patch.Address), neighborhood+", Kebayoran Baru")
-	desc := firstNonEmpty(deref(patch.Description), strings.TrimSpace(sug.Notes))
+	desc := firstNonEmpty(deref(patch.Description), patch.Narrative, strings.TrimSpace(sug.Notes))
 	if desc == "" {
 		desc = name + " — added from a community suggestion."
 	}

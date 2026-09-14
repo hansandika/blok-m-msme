@@ -21,6 +21,7 @@ type NotePatch struct {
 	Description  *string
 	SourceNote   *string
 	Vibes        []string
+	Narrative    string
 }
 
 var allowedVibes = map[string]bool{
@@ -97,7 +98,8 @@ func ParseNotes(notes string) NotePatch {
 		}
 	}
 
-	applyBareNoteTokens(&p, strings.Join(leftover, "\n"))
+	p.Narrative = strings.TrimSpace(strings.Join(leftover, "\n"))
+	applyBareNoteTokens(&p, p.Narrative)
 	return p
 }
 
