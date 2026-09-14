@@ -1,0 +1,27 @@
+# env & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!web/.env.example
+
+# node
+web/node_modules
+web/.next
+web/out
+web/tsconfig.tsbuildinfo
+npm-debug.log*
+
+# go
+api/bin/
+api/server
+api/seed
+*.exe
+*.test
+*.out
+
+# os
+.DS_Store
+*.swp
+.idea
+.vscode
