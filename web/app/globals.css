@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: #0e100d;
+  color: #f3ead8;
+}
+
+body {
+  min-height: 100vh;
+}
+
+::selection {
+  background: #d4a017;
+  color: #121410;
+}
+
+.leaflet-container {
+  background: #161a16;
+  font-family: inherit;
+  height: 100%;
+  width: 100%;
+}
+
+/* Darken OSM raster tiles without a Mapbox/Carto key. Markers live on overlay-pane. */
+.leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.45);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #1c211c;
+  color: #f3ead8;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+.leaflet-control-attribution {
+  background: rgba(18, 20, 16, 0.8) !important;
+  color: #b7b0a4 !important;
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
