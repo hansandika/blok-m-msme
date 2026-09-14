@@ -6,7 +6,7 @@ See also: [PRD](docs/PRD.md)
 
 Locals already drown in ~500 MRT Hub tenants plus Melawai Japanese plus kaki lima. They want filters like *quiet izakaya*, *quick kopi*, *open past 11* — not another Google clone.
 
-The demo runs **without paid API keys**. Listings are a hand-curated seed with lat/lng and tags. Mapbox is optional; Leaflet + Carto/OpenStreetMap is the default.
+The demo runs **without paid API keys**. Listings are a hand-curated seed with lat/lng and tags. Mapbox is optional; Leaflet + OpenStreetMap tiles is the default.
 
 ## What this MVP does
 
@@ -81,7 +81,7 @@ Or from the repo root: `make db`, `make api`, `make seed`, `make web`.
 | `AUTO_SEED` | API | `1` | Set `0` to skip seeding an empty DB |
 | `ADMIN_TOKEN` | API | unset | If set, `GET /admin/suggestions` requires `X-Admin-Token` |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:8080` | |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | web | unset | If set, Mapbox GL JS dark map. Otherwise Leaflet + Carto dark tiles (OSM data, no key) |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | web | unset | If set, Mapbox GL JS dark map. Otherwise Leaflet + OpenStreetMap tiles (no key; tiles are inverted to match the dark UI) |
 
 Copy [`.env.example`](.env.example). Do not commit real tokens.
 

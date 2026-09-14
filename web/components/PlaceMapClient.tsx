@@ -13,5 +13,9 @@ export function PlaceMapClient(props: {
   selected?: string | null;
   onSelect?: (slug: string) => void;
 }) {
-  return <PlaceMap {...props} />;
+  return (
+    <div className="h-full min-h-[240px] w-full">
+      <PlaceMap {...props} />
+    </div>
+  );
 }
