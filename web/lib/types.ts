@@ -41,3 +41,18 @@ export type PlaceFilters = {
   price?: string;
   openLate?: string;
 };
+
+export type Suggestion = {
+  id: string;
+  kind: "new_place" | "correction";
+  placeId?: string;
+  name?: string;
+  category?: string;
+  notes: string;
+  lat?: number;
+  lng?: number;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  appliedAt?: string;
+  appliedPlaceId?: string;
+};

@@ -38,16 +38,18 @@ type PlaceSeed struct {
 }
 
 type Suggestion struct {
-	ID        string    `json:"id"`
-	Kind      string    `json:"kind"`
-	PlaceID   *string   `json:"placeId,omitempty"`
-	Name      *string   `json:"name,omitempty"`
-	Category  *string   `json:"category,omitempty"`
-	Notes     string    `json:"notes"`
-	Lat       *float64  `json:"lat,omitempty"`
-	Lng       *float64  `json:"lng,omitempty"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID             string     `json:"id"`
+	Kind           string     `json:"kind"`
+	PlaceID        *string    `json:"placeId,omitempty"`
+	Name           *string    `json:"name,omitempty"`
+	Category       *string    `json:"category,omitempty"`
+	Notes          string     `json:"notes"`
+	Lat            *float64   `json:"lat,omitempty"`
+	Lng            *float64   `json:"lng,omitempty"`
+	Status         string     `json:"status"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	AppliedAt      *time.Time `json:"appliedAt,omitempty"`
+	AppliedPlaceID *string    `json:"appliedPlaceId,omitempty"`
 }
 
 type SuggestionInput struct {

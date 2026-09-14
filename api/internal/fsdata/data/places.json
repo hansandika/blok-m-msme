@@ -65,7 +65,7 @@
     "category": "japanese",
     "vibes": ["hangout", "after-office"],
     "price": "$$",
-    "openLate": true,
+    "openLate": false,
     "lat": -6.24358,
     "lng": 106.80142,
     "neighborhood": "Melawai",

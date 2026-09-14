@@ -12,6 +12,12 @@ export function Header() {
         </Link>
         <nav className="flex items-center gap-1 text-sm sm:gap-2">
           <Link
+            href="/admin"
+            className="rounded-full px-3 py-1.5 text-mist transition hover:bg-white/5 hover:text-paper"
+          >
+            Admin
+          </Link>
+          <Link
             href="/favorites"
             className="rounded-full px-3 py-1.5 text-mist transition hover:bg-white/5 hover:text-paper"
           >
