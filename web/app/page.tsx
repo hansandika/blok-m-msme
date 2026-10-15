@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { Explore } from "@/components/Explore";
 
 export default function HomePage() {
-  return <Explore />;
+  return (
+    <Suspense>
+      <Explore />
+    </Suspense>
+  );
 }

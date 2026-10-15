@@ -1,24 +1,72 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { PlaceMapClient } from "@/components/PlaceMapClient";
-import { fetchPlace } from "@/lib/api";
+import { ShareActions } from "@/components/ShareActions";
+import { SITE_URL, fetchPlace } from "@/lib/api";
+import type { Place } from "@/lib/types";
 import { vibeLabel } from "@/lib/labels";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+const loadPlace = cache(async (id: string): Promise<Place | null> => {
+  try {
+    return await fetchPlace(id);
+  } catch (err) {
+    if (err instanceof Error && err.message === "not-found") return null;
+    throw err;
+  }
+});
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const place = await loadPlace(id).catch(() => null);
+  if (!place) return { title: "Place not found · Blok M Lokal" };
+  const title = `${place.name} — ${place.neighborhood} · Blok M Lokal`;
+  const description = place.description.slice(0, 160);
+  const url = `${SITE_URL}/places/${place.slug}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, siteName: "Blok M Lokal", type: "website", locale: "en_ID" },
+    twitter: { card: "summary", title, description },
+  };
+}
+
+function jsonLd(place: Place) {
+  const type = place.category === "retail" ? "Store" : place.category === "cafe" ? "CafeOrCoffeeShop" : "Restaurant";
+  return {
+    "@context": "https://schema.org",
+    "@type": type,
+    name: place.name,
+    description: place.description,
+    url: `${SITE_URL}/places/${place.slug}`,
+    priceRange: place.price,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: place.address,
+      addressLocality: "Jakarta Selatan",
+      addressRegion: "DKI Jakarta",
+      addressCountry: "ID",
+    },
+    geo: { "@type": "GeoCoordinates", latitude: place.lat, longitude: place.lng },
+  };
+}
 
 export default async function PlacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let place;
-  try {
-    place = await fetchPlace(id);
-  } catch (err) {
-    if (err instanceof Error && err.message === "not-found") notFound();
-    throw err;
-  }
+  const place = await loadPlace(id);
+  if (!place) notFound();
 
   return (
     <article className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(place)).replace(/</g, "\\u003c") }}
+      />
       <div>
         <Link href="/" className="text-sm text-gold hover:underline">
           ← Map
@@ -57,6 +105,7 @@ export default async function PlacePage({ params }: { params: Promise<{ id: stri
         </dl>
         <div className="mt-8 flex flex-wrap gap-3">
           <FavoriteButton slug={place.slug} />
+          <ShareActions name={place.name} lat={place.lat} lng={place.lng} />
           <Link
             href={`/contribute?kind=correction&placeId=${place.id}&name=${encodeURIComponent(place.name)}`}
             className="rounded-full border border-white/15 px-3 py-1 text-xs text-mist hover:text-paper"

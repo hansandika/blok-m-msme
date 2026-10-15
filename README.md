@@ -205,3 +205,27 @@ UI chrome is English. Seed `aliases` and copy include Indonesian so these querie
 ## License / data
 
 Seed pins and hours are **approximate**, hand-curated for a demo, not scraped from Instagram and not a live Google dump. Confirm on-site before you go.
+
+## Deploy on Vercel
+
+Two Vercel projects from this one repo (no paid keys):
+
+| Project | Root dir | What runs |
+|---|---|---|
+| `blok-m-msme-api` | `api/` | The same chi router as a **Go serverless function** (`api/api/index.go`; `api/vercel.json` rewrites every path to it) |
+| `blok-m-msme-web` | `web/` | Next.js. The browser calls same-origin `/backend/*`, which Next rewrites to the API, so no CORS setup is needed |
+
+Env vars:
+
+- **API:** `DATABASE_URL` = Supabase **session pooler** URL (`…pooler.supabase.com:5432`, `sslmode=require`). The function uses a 2-connection pool and pgx simple-protocol mode, so it also tolerates the transaction pooler. `ADMIN_TOKEN` = long random string (never `blokm-demo` in prod). Optional `CORS_ORIGINS` (comma-separated) for direct browser calls.
+- **Web:** `API_URL` (or `NEXT_PUBLIC_API_URL`) = the API deployment URL, e.g. `https://blok-m-msme-api.vercel.app`. Optional `NEXT_PUBLIC_SITE_URL` for canonical/OG/sitemap URLs (defaults to the Vercel production URL).
+
+Migrations and seeding do **not** run on serverless cold starts; run `make seed` / `go run ./cmd/seed` against the DB once (the hosted DB is already seeded).
+
+## Website polish (M5 soft-launch)
+
+- Place pages: per-place `<title>`, description, canonical, Open Graph and schema.org `LocalBusiness` JSON-LD
+- `/sitemap.xml` (all places) and `/robots.txt` (admin excluded)
+- Shareable filters: home filters sync to the URL (`/?q=kopi&openLate=true`)
+- Place actions: Share / copy link (Web Share API) and Google Maps directions
+- Loading skeletons, retry on API errors, "clear all filters" empty state, skip-to-content link
