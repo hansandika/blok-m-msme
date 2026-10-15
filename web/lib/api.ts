@@ -1,7 +1,19 @@
 import type { Place, PlaceFilters, PlaceListResponse } from "./types";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
+// Absolute upstream API (used on the server and by the /backend rewrite).
+export const UPSTREAM_API_URL =
+  (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL)?.replace(/\/$/, "") ||
+  "http://localhost:8080";
+
+// In the browser we go through the same-origin /backend proxy (no CORS needed).
+export const API_URL = typeof window === "undefined" ? UPSTREAM_API_URL : "/backend";
+
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000")
+).replace(/\/$/, "");
 
 export function placesQuery(filters: PlaceFilters): string {
   const params = new URLSearchParams();
@@ -26,7 +38,7 @@ export async function fetchPlaces(filters: PlaceFilters = {}): Promise<PlaceList
 
 export async function fetchPlace(id: string): Promise<Place> {
   const res = await fetch(`${API_URL}/places/${encodeURIComponent(id)}`, {
-    cache: "no-store",
+    next: { revalidate: 300 },
   });
   if (res.status === 404) {
     throw new Error("not-found");

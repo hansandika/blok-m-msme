@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +42,7 @@ func New(st Backend, adminToken string) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowedOrigins:   allowedOrigins(),
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "X-Admin-Token"},
 		AllowCredentials: false,
@@ -62,6 +63,17 @@ func New(st Backend, adminToken string) http.Handler {
 		r.Patch("/suggestions/{id}", s.patchSuggestion)
 	})
 	return r
+}
+
+// allowedOrigins reads CORS_ORIGINS (comma-separated); defaults to local dev.
+func allowedOrigins() []string {
+	out := []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+	for _, o := range strings.Split(os.Getenv("CORS_ORIGINS"), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 func (s *Server) requireAdmin(next http.Handler) http.Handler {

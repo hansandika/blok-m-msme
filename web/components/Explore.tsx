@@ -1,14 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FilterBar } from "@/components/FilterBar";
 import { PlaceCard } from "@/components/PlaceCard";
 import { PlaceMapClient } from "@/components/PlaceMapClient";
-import { fetchPlaces } from "@/lib/api";
+import { fetchPlaces, placesQuery } from "@/lib/api";
 import type { Place, PlaceFilters } from "@/lib/types";
 
 export function Explore() {
-  const [filters, setFilters] = useState<PlaceFilters>({});
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<PlaceFilters>(() => ({
+    q: searchParams.get("q") ?? undefined,
+    category: searchParams.get("category") ?? undefined,
+    vibe: searchParams.get("vibe") ?? undefined,
+    price: searchParams.get("price") ?? undefined,
+    openLate: searchParams.get("openLate") ?? undefined,
+  }));
   const [places, setPlaces] = useState<Place[]>([]);
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -16,6 +26,15 @@ export function Explore() {
   const [loading, setLoading] = useState(true);
 
   const debounced = useDebounced(filters, 180);
+
+  // Keep filters in the URL so filtered views are shareable / bookmarkable.
+  useEffect(() => {
+    const qs = placesQuery(debounced);
+    if (qs !== searchParams.toString()) {
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +64,7 @@ export function Explore() {
 
   const summary = useMemo(() => {
     if (loading) return "Loading Melawai, Hub, M Bloc…";
-    if (error) return "API unreachable — is the Go server running on :8080?";
+    if (error) return "Couldn't load places right now. Please retry in a moment.";
     return `${count} place${count === 1 ? "" : "s"} inside the Blok M geofence`;
   }, [loading, error, count]);
 
@@ -65,13 +84,26 @@ export function Explore() {
         <FilterBar filters={filters} onChange={setFilters} />
       </section>
 
-      <p className="text-sm text-mist">{summary}</p>
+      <p className="text-sm text-mist" role="status" aria-live="polite">
+        {summary}
+        {error && (
+          <button
+            type="button"
+            onClick={() => setFilters({ ...filters })}
+            className="ml-3 rounded-full border border-white/15 px-3 py-0.5 text-xs text-paper hover:bg-white/5"
+          >
+            Retry
+          </button>
+        )}
+      </p>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
         <div className="h-[42vh] min-h-[260px] overflow-hidden rounded-2xl border border-white/10 lg:h-[calc(100vh-12rem)] lg:min-h-[480px]">
           <PlaceMapClient places={places} selected={selected} onSelect={setSelected} />
         </div>
         <div className="grid max-h-[70vh] gap-3 overflow-y-auto pr-1 lg:max-h-[calc(100vh-12rem)]">
+          {loading && places.length === 0 &&
+            [0, 1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />)}
           {places.map((place) => (
             <PlaceCard
               key={place.slug}
@@ -82,7 +114,11 @@ export function Explore() {
           ))}
           {!loading && places.length === 0 && !error && (
             <p className="rounded-2xl border border-dashed border-white/15 p-8 text-sm text-mist">
-              Nothing matches. Try “kopi”, “izakaya”, or clear the vibe chips.
+              Nothing matches. Try “kopi”, “izakaya”, or{" "}
+              <button type="button" onClick={() => setFilters({})} className="text-gold underline">
+                clear all filters
+              </button>
+              .
             </p>
           )}
         </div>
